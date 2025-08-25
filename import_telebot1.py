@@ -10,24 +10,31 @@ BASE_DIR = r"C:\Users\BCAAcaps\Desktop\SP bot\images"
 # 🔧 Глобальная настройка: показывать картинки или нет
 WITH_IMAGES = False   # Если False → будут только текстовые вопросы
 
-# Telegram ID для отправки заявок
+# Telegram ID для отправки заявок (группа)
 ADMIN_ID = -1002865584189  # замените на ваш ID
+
+# 🔧 Укажи ID тем для разных типов заявок
+THREAD_IDS = {
+    "#solo": 47,     # ID темы для соло игроков
+    "#cp": 45,       # ID темы для поиска КП
+    "#recruit": 51   # ID темы для КП, которые ищут игроков
+}
 
 # Вопросы и картинки для разных ролей
 SOLO_QUESTIONS = [
-    {"question": "Твоё имя?", "image": "1.jpg"},
-    {"question": "Твой возраст?", "image": "1.jpg"},
+    {"question": "Ваше имя?", "image": "1.jpg"},
+    {"question": "Возраст?", "image": "1.jpg"},
     {"question": "Игровой ник?", "image": "1.jpg"},
-    {"question": "Игровой класс?", "image": "1.jpg"},
-    {"question": "Кем играешь и какой уровень?", "image": "1.jpg"},
-    {"question": "Какие сабы и их уровни?", "image": "1.jpg"},
-    {"question": "Готовы ли вы к реролу или игре на клановом персонаже?", "image": "1.jpg"},
+    {"question": "Кем планируешь играть?", "image": "1.jpg"},
+    # {"question": "Уровень мейна (если уже начал играть)? ", "image": "1.jpg"},
+    # {"question": "Какие сабы и их уровни?", "image": "1.jpg"},
+    # {"question": "Готовы ли вы к реролу или игре на клановом персонаже?", "image": "1.jpg"},
     {"question": "Время игры (прайм)?", "image": "1.jpg"}
 ]
 
 RECRUIT_QUESTIONS = [
-    {"question": "Тип группы? К примеру: мили, луки, маги, стоп-пак", "image": "1.jpg"},
-    {"question": "Какие классы ищем? Перечислить нужные профы", "image": "1.jpg"},
+    {"question": "Планируемый тип группы? К примеру: мили, луки, маги, стоп-пак", "image": "1.jpg"},
+    {"question": "Нужно ли вам добирать игроков до полной группы?", "image": "1.jpg"},
     {"question": "Прайм группы? Время по Мск", "image": "1.jpg"},
     {"question": "Контакты ПЛа?", "image": "1.jpg"}
 ]
@@ -36,10 +43,10 @@ CP_QUESTIONS = [
     {"question": "Ваше имя?", "image": "1.jpg"},
     {"question": "Возраст?", "image": "1.jpg"},
     {"question": "Игровой ник?", "image": "1.jpg"},
-    {"question": "Игровой класс?", "image": "1.jpg"},
-    {"question": "Уровень мейна?", "image": "1.jpg"},
-    {"question": "Какие сабы и их уровни?", "image": "1.jpg"},
-    {"question": "Готовы ли вы к реролу или игре на клановом персонаже?", "image": "1.jpg"},
+    {"question": "Кем планируешь играть?", "image": "1.jpg"},
+    # {"question": "Уровень мейна (если уже начал играть)? ", "image": "1.jpg"},
+    # {"question": "Какие сабы и их уровни?", "image": "1.jpg"},
+    # {"question": "Готовы ли вы к реролу или игре на клановом персонаже?", "image": "1.jpg"},
     {"question": "Время игры (прайм)?", "image": "1.jpg"}
 ]
 
@@ -56,7 +63,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     keyboard = [
         [InlineKeyboardButton("Я соло игрок", callback_data='#solo')],
         [InlineKeyboardButton("Я ищу КП", callback_data='#cp')],
-        [InlineKeyboardButton("МЫ (КП) ищем игроков", callback_data='#recruit')]
+        [InlineKeyboardButton("МЫ (КП) ищем клан", callback_data='#recruit')]
     ]
 
     if update.message:
@@ -77,7 +84,7 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await query.edit_message_text("Вы уже отправляли заявку. Подождите час перед следующей.")
         return ConversationHandler.END
 
-    form_type = query.data   # ✅ добавлено
+    form_type = query.data
     context.user_data['form_type'] = form_type
     context.user_data['answers'] = []
     context.user_data['current_q'] = 0
@@ -104,7 +111,6 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     return ASKING
 
-
 # Сбор ответов
 async def collect_answers(update: Update, context: ContextTypes.DEFAULT_TYPE):
     text = update.message.text
@@ -123,7 +129,6 @@ async def collect_answers(update: Update, context: ContextTypes.DEFAULT_TYPE):
             await update.message.reply_text(next_q)
         return ASKING
     else:
-        # Показать анкету на подтверждение
         form_type = context.user_data['form_type']
         answers = context.user_data['answers']
         questions = context.user_data['questions']
@@ -154,7 +159,16 @@ async def confirm_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         for q, a in zip(questions, answers):
             text += f"*{q['question']}* {a}\n"
 
-        await context.bot.send_message(chat_id=ADMIN_ID, text=text, parse_mode=ParseMode.MARKDOWN)
+        # ✅ выбираем тему для отправки
+        thread_id = THREAD_IDS.get(form_type)
+
+        await context.bot.send_message(
+            chat_id=ADMIN_ID,
+            text=text,
+            parse_mode=ParseMode.MARKDOWN,
+            message_thread_id=thread_id
+        )
+
         await query.edit_message_text("✅ Заявка отправлена. Спасибо!")
         last_submission_time[user_id] = datetime.datetime.now()
         return ConversationHandler.END
@@ -194,7 +208,7 @@ def main():
             ],
             CONFIRM: [
                 CallbackQueryHandler(confirm_handler, pattern="^confirm_submit$"),
-                CallbackQueryHandler(confirm_handler, pattern="^edit_form$"),
+                CallbackQueryHandler(confirm_handler, pattern="^edit_form$")
             ]
         },
         fallbacks=[
