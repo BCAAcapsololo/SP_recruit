@@ -1,30 +1,46 @@
-from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup, InputFile
+from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import Application, CommandHandler, CallbackQueryHandler, MessageHandler, ContextTypes, filters, ConversationHandler
 from telegram.constants import ParseMode
 import datetime
 import os
-BASE_DIR = r"C:\Users\BCAAcaps\Desktop\SP bot"
 from dotenv import load_dotenv
+
+BASE_DIR = r"C:\Users\BCAAcaps\Desktop\SP bot\images"
+
+# 🔧 Глобальная настройка: показывать картинки или нет
+WITH_IMAGES = False   # Если False → будут только текстовые вопросы
 
 # Telegram ID для отправки заявок
 ADMIN_ID = -1002865584189  # замените на ваш ID
 
 # Вопросы и картинки для разных ролей
 SOLO_QUESTIONS = [
+    {"question": "Твоё имя?", "image": "1.jpg"},
+    {"question": "Твой возраст?", "image": "1.jpg"},
+    {"question": "Игровой ник?", "image": "1.jpg"},
+    {"question": "Игровой класс?", "image": "1.jpg"},
+    {"question": "Кем играешь и какой уровень?", "image": "1.jpg"},
+    {"question": "Какие сабы и их уровни?", "image": "1.jpg"},
+    {"question": "Готовы ли вы к реролу или игре на клановом персонаже?", "image": "1.jpg"},
+    {"question": "Время игры (прайм)?", "image": "1.jpg"}
+]
+
+RECRUIT_QUESTIONS = [
+    {"question": "Тип группы? К примеру: мили, луки, маги, стоп-пак", "image": "1.jpg"},
+    {"question": "Какие классы ищем? Перечислить нужные профы", "image": "1.jpg"},
+    {"question": "Прайм группы? Время по Мск", "image": "1.jpg"},
+    {"question": "Контакты ПЛа?", "image": "1.jpg"}
+]
+
+CP_QUESTIONS = [
     {"question": "Ваше имя?", "image": "1.jpg"},
     {"question": "Возраст?", "image": "1.jpg"},
     {"question": "Игровой ник?", "image": "1.jpg"},
     {"question": "Игровой класс?", "image": "1.jpg"},
     {"question": "Уровень мейна?", "image": "1.jpg"},
-    {"question": "Уровень сабов?", "image": "1.jpg"},
+    {"question": "Какие сабы и их уровни?", "image": "1.jpg"},
+    {"question": "Готовы ли вы к реролу или игре на клановом персонаже?", "image": "1.jpg"},
     {"question": "Время игры (прайм)?", "image": "1.jpg"}
-]
-
-RECRUIT_QUESTIONS = [
-    {"question": "Тип группы? К примеру: мили, луки, маги, стоп-пак", "image": "1.jpg1.jpg"},
-    {"question": "Какие классы ищем? Перечислить нужные профы", "image": "1.jpg"},
-    {"question": "Прайм группы? Время по Мск", "image": "1.jpg"},
-    {"question": "Контакты ПЛа?", "image": "1.jpg"}
 ]
 
 # Этапы диалога
@@ -57,26 +73,37 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = query.from_user.id
 
     last_time = last_submission_time.get(user_id)
-    if last_time and (datetime.datetime.now() - last_time).seconds < 35:
+    if last_time and (datetime.datetime.now() - last_time).seconds < 3600:
         await query.edit_message_text("Вы уже отправляли заявку. Подождите час перед следующей.")
         return ConversationHandler.END
 
-    context.user_data['form_type'] = query.data
+    form_type = query.data   # ✅ добавлено
+    context.user_data['form_type'] = form_type
     context.user_data['answers'] = []
     context.user_data['current_q'] = 0
 
-    if query.data == '#recruit':
+    if form_type == '#recruit':
         questions = RECRUIT_QUESTIONS
+    elif form_type == '#cp':
+        questions = CP_QUESTIONS
     else:
         questions = SOLO_QUESTIONS
 
     context.user_data['questions'] = questions
     question = questions[0]['question']
-    image_path = questions[0]['image']
-    # Отправляем картинку перед вопросом
-    await query.edit_message_text(question)
-    await query.message.reply_photo(photo=open(image_path, 'rb'))  # отправляем изображение
+    image_path = os.path.join(BASE_DIR, questions[0]['image'])
+
+    if WITH_IMAGES:
+        if os.path.exists(image_path):
+            with open(image_path, 'rb') as img:
+                await query.message.reply_photo(photo=img, caption=question)
+        else:
+            await query.message.reply_text(question)
+    else:
+        await query.message.reply_text(question)
+
     return ASKING
+
 
 # Сбор ответов
 async def collect_answers(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -87,19 +114,22 @@ async def collect_answers(update: Update, context: ContextTypes.DEFAULT_TYPE):
     questions = context.user_data['questions']
     if context.user_data['current_q'] < len(questions):
         next_q = questions[context.user_data['current_q']]['question']
-        image_path = questions[context.user_data['current_q']]['image']
-        await update.message.reply_text(next_q)
-        await update.message.reply_photo(photo=open(image_path, 'rb'))  # отправляем изображение
+        image_path = os.path.join(BASE_DIR, questions[context.user_data['current_q']]['image'])
+
+        if WITH_IMAGES:
+            with open(image_path, 'rb') as img:
+                await update.message.reply_photo(photo=img, caption=next_q)
+        else:
+            await update.message.reply_text(next_q)
         return ASKING
     else:
         # Показать анкету на подтверждение
         form_type = context.user_data['form_type']
         answers = context.user_data['answers']
-
-        fields = RECRUIT_QUESTIONS if form_type == 'recruit' else SOLO_QUESTIONS
+        questions = context.user_data['questions']
 
         preview_text = f"📝 Ваша анкета ({form_type}):\n\n"
-        for q, a in zip(fields, answers):
+        for q, a in zip(questions, answers):
             preview_text += f"*{q['question']}* {a}\n"
 
         keyboard = InlineKeyboardMarkup([
@@ -164,7 +194,7 @@ def main():
             ],
             CONFIRM: [
                 CallbackQueryHandler(confirm_handler, pattern="^confirm_submit$"),
-                CallbackQueryHandler(confirm_handler, pattern="^edit_form$")
+                CallbackQueryHandler(confirm_handler, pattern="^edit_form$"),
             ]
         },
         fallbacks=[
