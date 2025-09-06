@@ -160,7 +160,7 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     # Ограничение по времени (не для вакансий)
     if form_type != '#vacancy':
         last_time = last_submission_time.get(user_id)
-        if last_time and (datetime.datetime.now() - last_time).seconds < 31:
+        if last_time and (datetime.datetime.now() - last_time).seconds < 3600:
             await query.edit_message_text("Вы уже отправляли заявку. Подождите час перед следующей.")
             return ConversationHandler.END
 
