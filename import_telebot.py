@@ -100,7 +100,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         [InlineKeyboardButton("Я соло игрок", callback_data='#solo')],
         [InlineKeyboardButton("Я ищу КП", callback_data='#cp')],
         [InlineKeyboardButton("МЫ (КП) ищем клан", callback_data='#recruit')],
-        [InlineKeyboardButton("Создать вакансию", callback_data='#vacancy')],
+        [InlineKeyboardButton("Создать вакансию (кнопка для членов клана)", callback_data='#vacancy')],
         [InlineKeyboardButton("Показать все вакансии", callback_data='#show_vacancies')]
     ]
 
