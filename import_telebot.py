@@ -225,7 +225,7 @@ async def collect_answers(update: Update, context: ContextTypes.DEFAULT_TYPE):
         keyboard = InlineKeyboardMarkup([
             [InlineKeyboardButton("✅ Отправить", callback_data="confirm_submit")],
             [InlineKeyboardButton("✏️ Редактировать", callback_data="edit_form")],
-            [InlineKeyboardButton("🔄 Сменить тип анкеты", callback_data="#change")]
+            # [InlineKeyboardButton("🔄 Сменить тип анкеты", callback_data="#change")]
         ])
         await update.message.reply_text(preview_text, reply_markup=keyboard, parse_mode=ParseMode.HTML)
         return CONFIRM
@@ -280,8 +280,14 @@ async def confirm_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return ConversationHandler.END
 
     elif query.data == "edit_form":
+        # Сохраняем текущий тип заявки и вопросы
+        form_type = context.user_data['form_type']
+        questions = context.user_data['questions']
+        
+        # Сбрасываем только ответы и текущий вопрос
         context.user_data['answers'] = []
         context.user_data['current_q'] = 0
+        
         await query.edit_message_text(f"Хорошо, начнём заново.\n\n{questions[0]['question']}")
         return ASKING
 
