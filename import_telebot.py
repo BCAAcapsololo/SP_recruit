@@ -124,17 +124,40 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
             await query.edit_message_text("Пока нет доступных вакансий.")
             return ConversationHandler.END
 
+        await query.edit_message_text("📋 Доступные вакансии:")
+
         text_lines = ["📋 Доступные вакансии:"]
         keyboard = []
         for v in vacancies:
             name = v.get("name")
             prime = v.get("prime")
             looking = v.get("looking")
-            if name:
-                text_lines.append(f"➡️ {name} | 🕒 {prime} | 🎯 {looking}")
-                keyboard.append([InlineKeyboardButton(f"Хочу в {name}", callback_data=f"joinvac_{name}")])
+            requirements = v.get("requirements")
+            info = v.get("info")
+            
+            if not name:
+                continue
 
-        await query.edit_message_text("\n".join(text_lines), reply_markup=InlineKeyboardMarkup(keyboard))
+            vacancy_text = (
+                "━━━━━━━━━━━━\n"
+                f"➡️ <b>{name}</b>\n"
+                f"🕒 Прайм: {prime}\n"
+                f"🎯 Ищем: {looking}\n"
+                f"📌 Требования: {requirements}\n"
+                f"ℹ️ О КП: {info}\n"
+                "━━━━━━━━━━━━"
+            )
+
+            keyboard = InlineKeyboardMarkup([
+                [InlineKeyboardButton(f"Хочу в {name}", callback_data=f"joinvac_{name}")]
+            ])
+
+            await query.message.reply_text(
+                vacancy_text,
+                reply_markup=keyboard,
+                parse_mode=ParseMode.HTML
+            )
+
         return SELECT_TYPE
 
     # Доступ к созданию вакансии
